@@ -35,7 +35,7 @@ fn pretty_print_bot_details (bot: &DiscordBot) -> () {
 }
 
 
-
+#[derive(Clone)]
 pub struct DiscordBot {
     identifier: String,
     token: String,
