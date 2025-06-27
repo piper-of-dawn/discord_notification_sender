@@ -7,7 +7,7 @@
 //! ## Example
 //!
 //! ```no_run
-//! use discord_notify::DiscordBot;///!
+//! use discord_notify::DiscordBot;
 //! #[tokio::main]
 //! async fn main() {
 //!     // Ensure you have a .env file with a valid DISCORD_TOKEN
@@ -17,13 +17,23 @@
 //!     if let Err(e) = bot.send_notification("Hello from the Discord Notification Sender!").await {
 //!         eprintln!("Failed to send notification: {}", e);
 //!     }
+//!     
+//!     // Advanced notification with embeds
+//!     if let Err(e) = bot.send_advanced_notification(
+//!         "Title",
+//!         "Message content", 
+//!         0x3498db, // Blue color
+//!         Some("https://example.com/image.png")
+//!     ).await {
+//!         eprintln!("Failed to send advanced notification: {}", e);
+//!     }
 //! }
 //! ```
 
 
 use reqwest::Client;
 use std::env;
-use serde_json::json;
+use serde_json::{json, Value};
 use prettytable::{Table, row};
 
 fn pretty_print_bot_details (bot: &DiscordBot) -> () {
@@ -94,7 +104,13 @@ impl DiscordBot {
     /// * An error if the request failed.
     pub async fn send_notification(&self, message: &str) -> Result<(), reqwest::Error> {
         let url = format!("{}/channels/{}/messages", self.api_base_url, self.channel_id);
-        let body = json!({ "content": message });
+        let body = json!({
+            "embeds": [{
+                "title": self.identifier.clone(),
+                "description": message,
+                "color": 3447003
+            }]
+        });
         self.client
             .post(&url)
             .header("Authorization", format!("Bot {}", self.token))
@@ -103,5 +119,54 @@ impl DiscordBot {
             .await?
             .error_for_status()?; // Return error if the HTTP status is not success.
         Ok(())
+    }
+    
+    /// Sends an advanced notification with customizable embed properties.
+    ///
+    /// # Arguments
+    ///
+    /// * `title` - The title of the embed
+    /// * `description` - The main content of the embed
+    /// * `color` - The color of the embed sidebar (in decimal or hex)
+    /// * `image_url` - Optional URL to an image to display in the embed
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` if the message was sent successfully.
+    /// * An error if the request failed.
+    pub async fn send_advanced_notification(
+        &self,
+        title: &str,
+        description: &str,
+        color: u32,
+        image_url: Option<&str>,
+    ) -> Result<Value, reqwest::Error> {
+        let url = format!("{}/channels/{}/messages", self.api_base_url, self.channel_id);
+        
+        let mut embed = json!({
+            "title": title,
+            "description": description,
+            "color": color
+        });
+        
+        if let Some(image) = image_url {
+            embed["image"] = json!({"url": image});
+        }
+        
+        let body = json!({
+            "embeds": [embed]
+        });
+        
+        let response = self.client
+            .post(&url)
+            .header("Authorization", format!("Bot {}", self.token))
+            .json(&body)
+            .send()
+            .await?
+            .error_for_status()?
+            .json::<Value>()
+            .await?;
+            
+        Ok(response)
     }
 }
