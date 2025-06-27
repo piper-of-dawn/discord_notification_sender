@@ -17,11 +17,11 @@
 //!     if let Err(e) = bot.send_notification("Hello from the Discord Notification Sender!").await {
 //!         eprintln!("Failed to send notification: {}", e);
 //!     }
-//!     
+//!
 //!     // Advanced notification with embeds
 //!     if let Err(e) = bot.send_advanced_notification(
 //!         "Title",
-//!         "Message content", 
+//!         "Message content",
 //!         0x3498db, // Blue color
 //!         Some("https://example.com/image.png")
 //!     ).await {
@@ -31,7 +31,7 @@
 //! ```
 
 
-use reqwest::Client;
+use reqwest::{Client, StatusCode};
 use std::env;
 use serde_json::{json, Value};
 use prettytable::{Table, row};
@@ -120,7 +120,7 @@ impl DiscordBot {
             .error_for_status()?; // Return error if the HTTP status is not success.
         Ok(())
     }
-    
+
     /// Sends an advanced notification with customizable embed properties.
     ///
     /// # Arguments
@@ -142,21 +142,21 @@ impl DiscordBot {
         image_url: Option<&str>,
     ) -> Result<Value, reqwest::Error> {
         let url = format!("{}/channels/{}/messages", self.api_base_url, self.channel_id);
-        
+
         let mut embed = json!({
             "title": title,
             "description": description,
             "color": color
         });
-        
+
         if let Some(image) = image_url {
             embed["image"] = json!({"url": image});
         }
-        
+
         let body = json!({
             "embeds": [embed]
         });
-        
+
         let response = self.client
             .post(&url)
             .header("Authorization", format!("Bot {}", self.token))
@@ -166,7 +166,7 @@ impl DiscordBot {
             .error_for_status()?
             .json::<Value>()
             .await?;
-            
+
         Ok(response)
     }
 }
